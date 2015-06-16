@@ -1,0 +1,174 @@
+{% load staticfiles %}
+<html>
+	<head>
+		
+		<script type="text/javascript"
+			  src="https://maps.googleapis.com/maps/api/js?v=3.8&key=AIzaSyC7zFb7ymHd59HbHYcAld46OcF93OkjD9s&sensor=false">
+		</script>
+		<script type="text/javascript" src="{% static 'anycluster/anycluster.js' %}"></script>
+		<script type="text/javascript" src="{% static 'anycluster/django_ajax_csrf.js' %}"></script>
+		<script type="text/javascript" src="{% static 'anycluster/anycluster_marker.js' %}"></script>
+		<link rel="stylesheet" href="{% static 'anycluster/anycluster.css' %}">
+
+		<script type="text/javascript">
+		
+		
+			var anyclusterSettings = {
+				mapType : "google", // "google" or "osm"
+				gridSize: 256, //integer
+				zoom: 11, //initial zoom
+				center: [12.9762300, 77.6032900], //initial center in lng lat
+				MapTypeId: google.maps.MapTypeId.ROADMAP, //google only - choose from  ROADMAP,SATELLITE,HYBRID or TERRAIN
+				clusterMethod : "kmeans", //"grid" or "kmeans" or "centroid"
+				iconType: "exact", //"exact" (with exact cluster counts) or "simple" (with rounded counts) 
+				singlePinImages: {
+					'imperial':'/static/anycluster/pin_imperial.png', //optional, use in conjunction with django settings: 'ANYCLUSTER_PINCOLUMN'
+					'stone':'/static/anycluster/pin_stone.png',
+					'wild':'/static/anycluster/pin_wild.png',
+					'japanese':'/static/anycluster/pin_japan.png',
+					'flower':'/static/anycluster/pin_flower.png'
+				},
+				onFinalClick : function(entries){
+					openPopup(entries);
+				}
+	
+			}
+			
+			var anyclusterSettings_osm = {
+				mapType : "osm", // "google" or "osm"
+				gridSize: 256, //integer
+				zoom: 11, //initial zoom
+				center: [49,11], //initial center in lng lat
+				clusterMethod : "kmeans", //"grid" or "kmeans" or "centroid"
+				iconType: "simple", //"exact" (with exact cluster counts) or "simple" (with rounded counts) 
+				singlePinImages: {
+					'dbvalue':'/static/path/to/image.png' //optional, use in conjunction with django settings: 'ANYCLUSTER_PINCOLUMN'
+				}
+	
+			}
+		
+			window.onload = function(){
+				// do not use both maps simultaneously as this will confuse the cache
+				clustermap = new Anycluster("gmap", anyclusterSettings);
+				//var osmap = new Anycluster("osmap", anyclusterSettings_osm);
+			}
+		</script>
+		
+		<script type="text/javascript">
+			//simple popup script
+			
+			function openPopup(html){
+				var content = document.getElementById('clusterContentPopup');
+				content.innerHTML = html;
+				document.getElementById('clustererPopup').style.display = "";
+			}
+			function closePopup(){
+				document.getElementById('clustererPopup').style.display = "none";
+			}
+		</script>
+
+		<script type="text/javascript">
+			//example script for getting viewport markers
+			
+			function loadViewportMarkers(){
+				clustermap.getViewportContent(function(html){
+					document.getElementById('markerList').innerHTML = html;
+				});
+			}
+
+		</script>
+
+		<script type="text/javascript">
+		function takeInAddress() {
+			geocoder = new google.maps.Geocoder();
+			var address = document.getElementById('my-address').value;
+			geocoder.geocode({'address':address}, function(results,status){
+				var lat,lng;
+
+				if(status == google.maps.GeocoderStatus.OK)
+				{	console.log('All ok');
+					alert("Latitude " + results[0].geometry.location.lat());
+					alert("Longitude " + results[0].geometry.location.lng());
+					lat = results[0].geometry.location.lat();
+					lng = results[0].geometry.location.lng();
+					var xhr = new XMLHttpRequest();
+					
+					var url = "/anycluster/address" //+"/"+lat+"/"+lng+"/"; // + urlParams;
+					
+					postParams = {'name':address ,'lat':results[0].geometry.location.lat(),'lng':results[0].geometry.location.lng()}
+					xhr.onreadystatechange=function()
+  					{
+  						if (xhr.readyState==4 && xhr.status==200)
+    						{
+    							document.getElementById("coords").innerHTML=XMLHttpRequest.responseText;
+    						}
+  					}
+
+					xhr.open("POST",url,true);
+					var csrftoken = getCookieValue('csrftoken');
+    				xhr.setRequestHeader("X-CSRFToken", csrftoken);
+
+					xhr.send(JSON.stringify(postParams));
+				}
+			})
+			
+
+		}
+
+
+		</script>
+		
+		<style>
+			.clusterlabels {
+				color:#fff;
+				font-weight: bold;
+			}
+		</style>
+		
+		<style>
+		  .olControlAttribution {
+		      position: absolute;
+		      font-size: 10px;
+		      text-align: right;
+		      color: #eeeeee;
+		      bottom: 0;
+		      right: 0;
+		      background: #130085; /* fallback for IE - IE6 requires background shorthand*/
+		      background: rgba(0, 60, 136, 0.3);
+		      filter: alpha(opacity=30);
+		      font-family: 'Lucida Grande', Verdana, Geneva, Lucida, Arial, Helvetica, sans-serif;
+		      padding: 2px 4px;
+		      border-radius: 5px 0 0 0;
+		  }
+		  .olControlAttribution a {
+		      color: #eeeeee;
+		      font-weight: bold;
+		  }
+		  .olControlZoom a:hover {
+		      color: white;
+		  }
+		  div.olControlZoomPanel {
+		      top: 15px;
+		      left: 15px;
+		  }
+	  </style>
+		
+	</head>
+	<body>
+	<!--	<div id="osmap" style="width:600px; height:300px; border: 1px solid black"></div> --> 
+	 	<div id="gmap" style="width:600px; height:300px; border: 1px solid black"></div> 
+		<div id="clustererPopup" style="border:2px solid black; position: absolute; left:30%;top:50%; background-color: #aaa; border-radius:10px; padding: 10px; display:none;">
+			<div id="clusterContentPopup"></div>
+			<div style="text-align:center; margin-top: 20px;"><button onclick="closePopup();">close</button></div>
+		</div>
+		<div style="margin-top:30px;">
+			<div><button onclick="loadViewportMarkers();">Load all markers on the map as list</button></div>
+			<div><input type="text" id="my-address"></div>
+			<div><button onclick = "takeInAddress();">Enter address</button></div>
+			<div id = "coords"></div>
+			<div id="markerList"></div>
+		</div>
+		<!-- needed for ajax POST requests -->
+		{% csrf_token %}
+	</body>
+</html>
